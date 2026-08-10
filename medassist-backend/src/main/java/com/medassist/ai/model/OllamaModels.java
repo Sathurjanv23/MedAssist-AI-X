@@ -1,6 +1,8 @@
 package com.medassist.ai.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +21,7 @@ public class OllamaModels {
     @NoArgsConstructor
     @AllArgsConstructor
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class OllamaRequest {
         private String model;
         private String prompt;
@@ -33,6 +36,7 @@ public class OllamaModels {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class OllamaMessage {
         private String role;    // system, user, assistant
         private String content;
@@ -41,14 +45,25 @@ public class OllamaModels {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class OllamaResponse {
         private String model;
         private String response;   // for /api/generate
         private OllamaMessage message; // for /api/chat
         private Boolean done;
+
+        @JsonProperty("done_reason")
+        private String doneReason;
+
+        @JsonProperty("total_duration")
         private Long totalDuration;
+
+        @JsonProperty("prompt_eval_count")
         private Long promptEvalCount;
+
+        @JsonProperty("eval_count")
         private Long evalCount;
     }
 }
+
 

@@ -74,7 +74,7 @@ public class AIController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> aiStatus() {
         boolean available = ollamaClient.isAvailable();
         return ResponseEntity.ok(ApiResponse.success(Map.of(
-            "status", available ? "operational" : "unavailable",
+            "status", available ? "UP" : "DOWN",
             "available", available,
             "message", available
                     ? "AI service is reachable"

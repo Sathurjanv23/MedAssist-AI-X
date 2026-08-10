@@ -41,7 +41,10 @@ public class AIService {
     @Value("${ai.model.default:llama3.2}")
     private String defaultModel;
 
-    // â”€â”€ AI Chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    @Value("${ai.model.medical:llama3.2}")
+    private String medicalModel;
+
+    // ── AI Chat ───────────────────────────────────────────────────────────────
 
     public ChatResponse chat(String userId, ChatRequest request) {
         // Safety check
@@ -90,7 +93,7 @@ public class AIService {
                 .build();
     }
 
-    // â”€â”€ Medical Report Analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Medical Report Analysis ───────────────────────────────────────────────
 
     @Async("aiExecutor")
     public CompletableFuture<MedicalReport.AnalysisResult> analyzeReport(
@@ -123,16 +126,16 @@ public class AIService {
             IMPORTANT: Provide health information only. Do not diagnose. Recommend professional consultation.
             """.formatted(userContext, extractedText);
 
-        String response = ollamaClient.generate(prompt);
+        String response = ollamaClient.generate(prompt, medicalModel);
 
         MedicalReport.AnalysisResult result = parseAnalysisResult(response);
-        result.setAiModel(defaultModel);
+        result.setAiModel(medicalModel);
         result.setAnalyzedAt(LocalDateTime.now());
 
         return CompletableFuture.completedFuture(result);
     }
 
-    // â”€â”€ Symptom Analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Symptom Analysis ──────────────────────────────────────────────────────
 
     public Map<String, String> analyzeSymptoms(String userId, SymptomRequest request) {
         String userContext = contextBuilder.buildUserContext(userId);
@@ -158,7 +161,7 @@ public class AIService {
                 request.getAgeDays() != null ? request.getAgeDays() : "Unknown",
                 request.getSeverity() != null ? request.getSeverity() : "Not specified");
 
-        String response = ollamaClient.generate(prompt);
+        String response = ollamaClient.generate(prompt, medicalModel);
         response = safetyGuard.processResponse(response);
 
         return Map.of(
@@ -168,13 +171,13 @@ public class AIService {
         );
     }
 
-    // â”€â”€ Doctor Patient Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Doctor Patient Summary ────────────────────────────────────────────────
 
     public String generatePatientSummary(String patientUserId, String language) {
         String context = contextBuilder.buildUserContext(patientUserId);
         String prompt = "Generate a concise clinical summary for the following patient:\n\n" + context +
                         "\nProvide key health indicators, active conditions, and relevant history in a professional format.";
-        return ollamaClient.generate(prompt);
+        return ollamaClient.generate(prompt, medicalModel);
     }
 
     // â”€â”€ Internal Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

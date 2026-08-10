@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,9 @@ public class OllamaClient {
     @Value("${ai.model.default:llama3.2}")
     private String defaultModel;
 
+    @Value("${ai.model.medical:llama3.2}")
+    private String medicalModel;
+
     @Value("${ai.request.max-retries:2}")
     private int maxRetries;
 
@@ -38,8 +43,9 @@ public class OllamaClient {
     }
 
     public String generate(String prompt, String model) {
+        String targetModel = (model != null && !model.isBlank()) ? model : defaultModel;
         OllamaModels.OllamaRequest request = OllamaModels.OllamaRequest.builder()
-                .model(model)
+                .model(targetModel)
                 .prompt(prompt)
                 .stream(false)
                 .options(Map.of("temperature", 0.3, "num_predict", 2048))
@@ -51,12 +57,14 @@ public class OllamaClient {
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(OllamaModels.OllamaResponse.class)
+                    .retryWhen(Retry.max(Math.max(0, maxRetries))
+                            .filter(ex -> ex instanceof WebClientRequestException))
                     .block();
 
             if (response != null && response.getResponse() != null) {
                 return response.getResponse().trim();
             }
-            return "I'm sorry, I couldn't generate a response at this time.";
+            return getFallbackResponse();
 
         } catch (WebClientRequestException e) {
             log.error("Ollama connection failed: {}. Is Ollama running?", e.getMessage());
@@ -68,11 +76,12 @@ public class OllamaClient {
     }
 
     /**
-     * Chat endpoint â€” supports conversation history.
+     * Chat endpoint — supports conversation history.
      */
     public String chat(List<OllamaModels.OllamaMessage> messages, String model) {
+        String targetModel = (model != null && !model.isBlank()) ? model : defaultModel;
         OllamaModels.OllamaRequest request = OllamaModels.OllamaRequest.builder()
-                .model(model != null ? model : defaultModel)
+                .model(targetModel)
                 .messages(messages)
                 .stream(false)
                 .build();
@@ -83,15 +92,17 @@ public class OllamaClient {
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(OllamaModels.OllamaResponse.class)
+                    .retryWhen(Retry.max(Math.max(0, maxRetries))
+                            .filter(ex -> ex instanceof WebClientRequestException))
                     .block();
 
-            if (response != null && response.getMessage() != null) {
+            if (response != null && response.getMessage() != null && response.getMessage().getContent() != null) {
                 return response.getMessage().getContent().trim();
             }
             return getFallbackResponse();
 
         } catch (WebClientRequestException e) {
-            log.warn("Ollama connection refused â€” AI service may not be running");
+            log.warn("Ollama connection refused — AI service may not be running: {}", e.getMessage());
             return getFallbackResponse();
         } catch (Exception e) {
             log.error("Chat error: {}", e.getMessage());
@@ -105,6 +116,7 @@ public class OllamaClient {
                     .uri("/api/tags")
                     .retrieve()
                     .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(3))
                     .block();
             return true;
         } catch (Exception e) {
@@ -115,7 +127,7 @@ public class OllamaClient {
     private String getFallbackResponse() {
         return "I'm currently experiencing technical difficulties. Please try again in a moment. " +
                "For urgent health concerns, please consult a healthcare professional.\n\n" +
-               "âš•ï¸ *This is an AI assistant â€” always consult a doctor for medical decisions.*";
+               "⚕️ *This is an AI assistant — always consult a doctor for medical decisions.*";
     }
 }
 

@@ -28,15 +28,19 @@ public class WebClientConfig {
     @Value("${ai.service.url}")
     private String aiServiceUrl;
 
+    @Value("${ai.request.timeout:120s}")
+    private Duration aiTimeout;
+
     @Value("${ocr.service.url}")
     private String ocrServiceUrl;
 
     @Bean(name = "ollamaWebClient")
     public WebClient ollamaWebClient() {
+        int timeoutSec = aiTimeout != null ? (int) aiTimeout.toSeconds() : 120;
         return WebClient.builder()
                 .baseUrl(aiServiceUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .clientConnector(new ReactorClientHttpConnector(buildHttpClient(120)))
+                .clientConnector(new ReactorClientHttpConnector(buildHttpClient(timeoutSec)))
                 .filter(logRequest())
                 .filter(logResponse())
                 .codecs(config -> config.defaultCodecs().maxInMemorySize(10 * 1024 * 1024)) // 10MB
