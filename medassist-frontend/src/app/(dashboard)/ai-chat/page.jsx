@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -107,7 +107,7 @@ export default function AIChatPage() {
             <p className="text-muted-foreground text-sm mt-1">Context-aware conversational AI based on your medical data.</p>
           </div>
           <div className="flex items-center gap-3">
-            {status?.status === "DOWN" ? (
+            {status?.status === "DOWN" || status?.available === false ? (
               <span className="flex items-center gap-1.5 text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-full">
                 <StopCircle className="w-3.5 h-3.5" /> AI Offline
               </span>
